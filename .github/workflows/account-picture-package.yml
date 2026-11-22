@@ -1,0 +1,40 @@
+name: Build the 0.6.0 account picture update
+on:
+  push:
+    branches: [build/account-picture-0.6.0]
+permissions: {}
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Build and verify the stable package
+        shell: pwsh
+        run: |
+          ./tools/build/Build-Package.ps1 -FileName Atlas-v0.6.0 -NoExplorer
+          ./tools/build/Test-Package.ps1 -Path package/Atlas-v0.6.0.atlaspkg
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: verified-package
+          path: package/Atlas-v0.6.0.atlaspkg
+          if-no-files-found: error
+          compression-level: 0
+  attest:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      attestations: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: verified-package
+          digest-mismatch: error
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: Atlas-v0.6.0.atlaspkg
